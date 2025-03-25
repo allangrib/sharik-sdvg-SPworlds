@@ -1,54 +1,212 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Прыгающий шарик</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прыгающий шарик SPWorlds</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        canvas {
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+        }
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0088ff;
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <div class="info-panel">
+        <h2>SPWorlds Шарик</h2>
+        <p>Баланс: <span id="balance">0</span> руб.</p>
+        <p>Скорость: <span id="speed">1.0</span>x</p>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <button id="connectBtn">Подключить SPWorlds</button>
+        <div id="apiForm" style="display: none; margin-top: 10px;">
+            <input type="text" id="cardId" placeholder="Card ID" style="padding: 5px; margin-right: 5px;">
+            <input type="text" id="cardToken" placeholder="Card Token" style="padding: 5px; margin-right: 5px;">
+            <button id="saveBtn">Сохранить</button>
+        </div>
+    </div>
+
     <script>
+        // Настройки игры
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 800;
-        canvas.height = 600;
-
-        let angle = 0;
-        const center = { x: canvas.width/2, y: canvas.height/2 };
+        const center = { x: canvas.width / 2, y: canvas.height / 2 };
         const orbitRadius = 150;
         const ballRadius = 20;
-        const speed = 0.05;
-        let jumpHeight = 0;
-        const maxJump = 50;
-
+        
+        // Параметры анимации
+        let angle = 0;
+        let baseSpeed = 0.05;
+        let speedMultiplier = 1.0;
+        let maxJump = 50;
+        let balance = 0;
+        
+        // Настройки API
+        let cardId = localStorage.getItem('spw_cardId') || '';
+        let cardToken = localStorage.getItem('spw_cardToken') || '';
+        let isConnected = false;
+        
+        // Элементы интерфейса
+        const balanceElement = document.getElementById('balance');
+        const speedElement = document.getElementById('speed');
+        const connectBtn = document.getElementById('connectBtn');
+        const apiForm = document.getElementById('apiForm');
+        const cardIdInput = document.getElementById('cardId');
+        const cardTokenInput = document.getElementById('cardToken');
+        const saveBtn = document.getElementById('saveBtn');
+        
+        // Инициализация формы
+        if (cardId) cardIdInput.value = cardId;
+        if (cardToken) cardTokenInput.value = cardToken;
+        
+        // Обработчики событий
+        connectBtn.addEventListener('click', () => {
+            apiForm.style.display = apiForm.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        saveBtn.addEventListener('click', () => {
+            cardId = cardIdInput.value.trim();
+            cardToken = cardTokenInput.value.trim();
+            
+            if (cardId && cardToken) {
+                localStorage.setItem('spw_cardId', cardId);
+                localStorage.setItem('spw_cardToken', cardToken);
+                isConnected = true;
+                apiForm.style.display = 'none';
+                connectBtn.textContent = 'Переподключить';
+                fetchBalance();
+            } else {
+                alert('Введите Card ID и Token!');
+            }
+        });
+        
+        // Функция для запроса баланса
+        async function fetchBalance() {
+            if (!isConnected) return;
+            
+            try {
+                // В реальном проекте используйте прокси-сервер для API-запросов
+                // Это демо-версия с имитацией запроса
+                console.log('Запрос к SPWorlds API...');
+                
+                // Имитация ответа API (в реальном коде замените на fetch)
+                setTimeout(() => {
+                    // Рандомное изменение баланса для демонстрации
+                    balance = Math.floor(Math.random() * 5000);
+                    balanceElement.textContent = balance;
+                    speedMultiplier = 1 + (balance / 2000);
+                    speedElement.textContent = speedMultiplier.toFixed(1);
+                }, 500);
+                
+            } catch (error) {
+                console.error('Ошибка API:', error);
+            }
+        }
+        
+        // Основной цикл анимации
         function animate() {
-            ctx.fillStyle = '#000';
+            // Очистка холста
+            ctx.fillStyle = '#121212';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Обновляем позицию
-            angle += speed;
-            jumpHeight = Math.sin(angle * 5) * maxJump;
+            // Обновление позиции
+            angle += baseSpeed * speedMultiplier;
+            if (angle > Math.PI * 2) angle -= Math.PI * 2;
             
+            const jumpHeight = Math.sin(angle * 5) * maxJump * speedMultiplier;
             const x = center.x + orbitRadius * Math.cos(angle);
             const y = center.y + orbitRadius * Math.sin(angle) - jumpHeight;
             
-            // Рисуем орбиту и шарик
-            ctx.strokeStyle = '#FFF';
+            // Рисуем орбиту
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.5)';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(center.x, center.y, orbitRadius, 0, Math.PI*2);
+            ctx.arc(center.x, center.y, orbitRadius, 0, Math.PI * 2);
             ctx.stroke();
             
-            ctx.fillStyle = '#F00';
+            // Рисуем шарик с градиентом
+            const gradient = ctx.createRadialGradient(
+                x, y - ballRadius/3, ballRadius * 0.1,
+                x, y, ballRadius
+            );
+            gradient.addColorStop(0, '#ff4444');
+            gradient.addColorStop(1, '#cc0000');
+            
+            ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Тень шарика
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(
+                x, center.y + orbitRadius + 5, 
+                ballRadius * (1 - jumpHeight/(maxJump * 2)), 
+                ballRadius * 0.3, 
+                0, 0, Math.PI * 2
+            );
             ctx.fill();
             
             requestAnimationFrame(animate);
         }
         
+        // Запуск анимации
         animate();
+        
+        // Периодическое обновление баланса
+        setInterval(fetchBalance, 10000);
+        
+        // Первоначальная проверка подключения
+        if (cardId && cardToken) {
+            isConnected = true;
+            connectBtn.textContent = 'Переподключить';
+            fetchBalance();
+        }
     </script>
 </body>
 </html>
